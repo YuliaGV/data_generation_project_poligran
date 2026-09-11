@@ -1,6 +1,8 @@
 package generate_info;
 
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Random;
@@ -12,7 +14,7 @@ public class GenerateInfoFiles {
     private static final String[] NOMBRES = {"Enrique", "Duvan", "Leandro", "Lamine", "Luis", "Laura", "Cristiano", "Isabel", "Diego", "Kylian"};
     private static final String[] APELLIDOS = {"Gomez", "Mosquera", "Perez", "Smith", "Mbappe", "Paniagua", "Messi", "Ruiz", "Torres", "Delgado"};
     private static final String[] PRODUCTOS = {"Camiseta", "Pantalon", "Chaqueta", "Zapatos", "Gorra", "Bufanda", "Cojines", "Cobijas", "Cinturon", "Gafas"};
-    private static final String[] TIPO_DOCUMENTO = {"CC", "CE", "TI"};
+    private static final String DOCUMENT_TYPE = "CC";
     
     private static final Random random = new Random();
 
@@ -20,6 +22,7 @@ public class GenerateInfoFiles {
      * Método principal para ejecutar la generación de archivos
      */
     public static void main(String[] args) {
+    	
         System.out.println("Iniciando la generacion de archivos de prueba");
 
         try {
@@ -29,9 +32,25 @@ public class GenerateInfoFiles {
             // Generamos archivo de información de vendedores (por ejemplo 5 vendedores)
             createSalesManInfoFile(5);
             
-            // Generamos archivos de ventas para un par de vendedores específicos como prueba
-            createSalesMenFile(15, "Santiago Gomez", 1010101010L);
-            createSalesMenFile(8, "Elizabeth Ospina", 2020202020L);
+            // Leemos el archivo generado de salesmen y creamos un archivo sales para cada uno
+            
+            try (BufferedReader reader =
+                    new BufferedReader(new FileReader("vendedores_info.txt"))) {
+
+                String line;
+
+                while ((line = reader.readLine()) != null) {
+
+                    String[] data = line.split(";");
+
+                    String name = data[2] + " " + data[3];
+
+                    long id = Long.parseLong(data[1]);
+
+                    createSalesMenFile(10, name, id);
+                }
+            }
+         
 
             System.out.println("¡Generacion de archivos finalizada de manera exitosa!");
             System.out.println("Debes refrescar la carpeta de tu proyecto en Eclipse para ver los archivos generados");
@@ -76,7 +95,7 @@ public class GenerateInfoFiles {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(fileName))) {
             for (int i = 0; i < salesmanCount; i++) {
                 // Genera datos pseudoaleatorios
-                String tipoDoc = TIPO_DOCUMENTO[random.nextInt(TIPO_DOCUMENTO.length)];
+                String tipoDoc = DOCUMENT_TYPE;
                 long numDoc = 1000000000L + (long)(random.nextDouble() * 9000000000L); // Número de 10 dígitos
                 String nombre = NOMBRES[random.nextInt(NOMBRES.length)];
                 String apellido = APELLIDOS[random.nextInt(APELLIDOS.length)];
@@ -102,7 +121,7 @@ public class GenerateInfoFiles {
         
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(fileName))) {
             // CC se asume como tipo de documento por defecto
-            String tipoDocumento = "CC"; 
+            String tipoDocumento = DOCUMENT_TYPE; 
             
             // Escribe el encabezado del vendedor (primera línea del archivo)
             writer.write(tipoDocumento + ";" + id);
