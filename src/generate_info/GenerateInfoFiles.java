@@ -6,7 +6,9 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.Locale;
 import java.util.Random;
 
@@ -143,13 +145,33 @@ public class GenerateInfoFiles {
     public static void createSalesManInfoFile(int salesmanCount) throws IOException {
         String fileName = SALESMEN_FILE;
         
+        // Con dos listas de nombres y apellidos solo hay esta cantidad de combinaciones
+        // posibles. Si se piden más vendedores que eso, no alcanzan los nombres distintos.
+        int combinacionesPosibles = NOMBRES.length * APELLIDOS.length;
+        if (salesmanCount > combinacionesPosibles) {
+            throw new IOException("No se pueden generar " + salesmanCount
+                    + " vendedores con nombres distintos. El maximo es " + combinacionesPosibles
+                    + ". Agregue mas nombres o apellidos a las listas.");
+        }
+        
+        // Guarda los nombres que ya se usaron, para no repetir ninguno
+        Set<String> nombresUsados = new HashSet<String>();
+        
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(fileName))) {
             for (int i = 0; i < salesmanCount; i++) {
                 // Genera datos pseudoaleatorios
                 String tipoDoc = DOCUMENT_TYPE;
                 long numDoc = 1000000000L + (long)(random.nextDouble() * 9000000000L); // Número de 10 dígitos
-                String nombre = NOMBRES[random.nextInt(NOMBRES.length)];
-                String apellido = APELLIDOS[random.nextInt(APELLIDOS.length)];
+                
+                // El reporte final muestra el nombre y no el documento, asi que dos
+                // vendedores con el mismo nombre saldrian como dos filas iguales y no
+                // habria forma de distinguirlas. Se sortea hasta que salga uno libre.
+                String nombre;
+                String apellido;
+                do {
+                    nombre = NOMBRES[random.nextInt(NOMBRES.length)];
+                    apellido = APELLIDOS[random.nextInt(APELLIDOS.length)];
+                } while (!nombresUsados.add(nombre + " " + apellido));
                 
                 // Formatea y escribir la línea
                 String linea = String.format("%s;%d;%s;%s", tipoDoc, numDoc, nombre, apellido);
