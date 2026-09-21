@@ -22,6 +22,10 @@ public class GenerateInfoFiles {
     // Nombres de los archivos que genera el programa
     private static final String PRODUCTS_FILE = "productos_info.txt";
     private static final String SALESMEN_FILE = "vendedores_info.txt";
+
+    // Cada tanto un vendedor recibe un segundo archivo de ventas, para que el
+    // caso de varios archivos por vendedor quede siempre cubierto en la prueba
+    private static final double PROBABILIDAD_SEGUNDO_ARCHIVO = 0.4;
     
     private static final Random random = new Random();
 
@@ -55,6 +59,11 @@ public class GenerateInfoFiles {
                     long id = Long.parseLong(data[1]);
 
                     createSalesMenFile(10, name, id);
+
+                    // A algunos vendedores se les genera un segundo archivo
+                    if (random.nextDouble() < PROBABILIDAD_SEGUNDO_ARCHIVO) {
+                        createSalesMenFile(10, name, id, 2);
+                    }
                 }
             }
          
@@ -125,9 +134,22 @@ public class GenerateInfoFiles {
      * Se reciben como parámetros: la cantiad de ventas a generar, el nombre del vendedor y el número de identificación del vendedor 
      */
     public static void createSalesMenFile(int randomSalesCount, String name, long id) throws IOException {
+        createSalesMenFile(randomSalesCount, name, id, 1);
+    }
+
+    /**
+     * Igual que el método anterior, pero permite crear un segundo o tercer archivo
+     * de ventas para el mismo vendedor. Los archivos quedan con nombres distintos y
+     * todos llevan el mismo documento en la primera línea, que es lo que permite
+     * sumarlos después en una sola cuenta.
+     * Se recibe además el consecutivo del archivo, empezando en 1.
+     */
+    public static void createSalesMenFile(int randomSalesCount, String name, long id, int numeroArchivo)
+            throws IOException {
         // Se crea un nombre de archivo
         String safeName = name.replace(" ", "_");
-        String fileName = "ventas_" + safeName + "_" + id + ".txt";
+        String sufijo = numeroArchivo > 1 ? "_" + numeroArchivo : "";
+        String fileName = "ventas_" + safeName + "_" + id + sufijo + ".txt";
         
         // Se leen los productos que existen de verdad en el catálogo, en vez de
         // suponer que siempre son diez. Así no se generan ventas de productos
