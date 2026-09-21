@@ -37,6 +37,10 @@ public class GenerateInfoFiles {
         System.out.println("Iniciando la generacion de archivos de prueba");
 
         try {
+            // Se borran los archivos de ventas de la corrida anterior. Si se quedan,
+            // se leen junto con los nuevos y los totales de los reportes no cuadran.
+            borrarVentasAnteriores();
+            
             // Generamos archivo de información de productos (por ejemplo 10 productos)
             createProductsFile(10);
             
@@ -73,6 +77,34 @@ public class GenerateInfoFiles {
 
         } catch (IOException e) {
             System.err.println("Ocurrio un problema al generar los archivos: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Borra los archivos de ventas que hayan quedado de una ejecución anterior.
+     * Solo se borra lo que empieza por "ventas_" y termina en ".txt", que es lo
+     * que genera este mismo programa.
+     */
+    private static void borrarVentasAnteriores() {
+        java.io.File carpeta = new java.io.File(".");
+        java.io.File[] archivos = carpeta.listFiles();
+        
+        if (archivos == null) {
+            return;
+        }
+        
+        int borrados = 0;
+        for (java.io.File archivo : archivos) {
+            String nombre = archivo.getName();
+            if (archivo.isFile() && nombre.startsWith("ventas_") && nombre.endsWith(".txt")) {
+                if (archivo.delete()) {
+                    borrados++;
+                }
+            }
+        }
+        
+        if (borrados > 0) {
+            System.out.println("Se borraron " + borrados + " archivos de ventas de la ejecucion anterior");
         }
     }
 
