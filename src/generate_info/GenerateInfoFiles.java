@@ -5,6 +5,8 @@ import java.io.BufferedWriter;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.Random;
 
@@ -16,6 +18,10 @@ public class GenerateInfoFiles {
     private static final String[] APELLIDOS = {"Gomez", "Mosquera", "Perez", "Smith", "Mbappe", "Paniagua", "Messi", "Ruiz", "Torres", "Delgado"};
     private static final String[] PRODUCTOS = {"Camiseta", "Pantalon", "Chaqueta", "Zapatos", "Gorra", "Bufanda", "Cojines", "Cobijas", "Cinturon", "Gafas"};
     private static final String DOCUMENT_TYPE = "CC";
+
+    // Nombres de los archivos que genera el programa
+    private static final String PRODUCTS_FILE = "productos_info.txt";
+    private static final String SALESMEN_FILE = "vendedores_info.txt";
     
     private static final Random random = new Random();
 
@@ -36,7 +42,7 @@ public class GenerateInfoFiles {
             // Leemos el archivo generado de salesmen y creamos un archivo sales para cada uno
             
             try (BufferedReader reader =
-                    new BufferedReader(new FileReader("vendedores_info.txt"))) {
+                    new BufferedReader(new FileReader(SALESMEN_FILE))) {
 
                 String line;
 
@@ -67,7 +73,7 @@ public class GenerateInfoFiles {
      * Formato: Id Producto; Nombre Producto; Precio por Unidad.
      */
     public static void createProductsFile(int productsCount) throws IOException {
-        String fileName = "productos_info.txt";
+        String fileName = PRODUCTS_FILE;
         
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(fileName))) {
             for (int i = 1; i <= productsCount; i++) {
@@ -94,7 +100,7 @@ public class GenerateInfoFiles {
      * Formato: Tipo Documento; Número Documento; Nombres; Apellidos
      */
     public static void createSalesManInfoFile(int salesmanCount) throws IOException {
-        String fileName = "vendedores_info.txt";
+        String fileName = SALESMEN_FILE;
         
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(fileName))) {
             for (int i = 0; i < salesmanCount; i++) {
@@ -123,6 +129,15 @@ public class GenerateInfoFiles {
         String safeName = name.replace(" ", "_");
         String fileName = "ventas_" + safeName + "_" + id + ".txt";
         
+        // Se leen los productos que existen de verdad en el catálogo, en vez de
+        // suponer que siempre son diez. Así no se generan ventas de productos
+        // inexistentes si se cambia la cantidad de productos.
+        List<String> idsProductos = leerIdsDeProductos();
+        if (idsProductos.isEmpty()) {
+            throw new IOException("El archivo " + PRODUCTS_FILE
+                    + " no tiene productos. Debe generarse antes que las ventas.");
+        }
+        
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(fileName))) {
             // CC se asume como tipo de documento por defecto
             String tipoDocumento = DOCUMENT_TYPE; 
@@ -133,9 +148,8 @@ public class GenerateInfoFiles {
             
             // Genera las ventas
             for (int i = 0; i < randomSalesCount; i++) {
-                // Genera ID de producto pseudoaleatorio (asumiendo formato PROD-XXX)
-                int idNum = random.nextInt(10) + 1; // Un producto del 1 al 10
-                String idProducto = "PROD-" + String.format("%03d", idNum);
+                // Toma un producto cualquiera de los que existen en el catálogo
+                String idProducto = idsProductos.get(random.nextInt(idsProductos.size()));
                 
                 // Cantidad vendida entre 1 y 50
                 int cantidadVendida = random.nextInt(50) + 1; 
@@ -146,5 +160,32 @@ public class GenerateInfoFiles {
                 writer.newLine();
             }
         }
+    }
+
+    /**
+     * Lee del archivo de productos los ids que se pueden vender.
+     * Se devuelve una lista vacía si el archivo todavía no existe.
+     */
+    private static List<String> leerIdsDeProductos() throws IOException {
+        List<String> ids = new ArrayList<String>();
+        
+        java.io.File archivo = new java.io.File(PRODUCTS_FILE);
+        if (!archivo.isFile()) {
+            return ids;
+        }
+        
+        try (BufferedReader reader = new BufferedReader(new FileReader(archivo))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (line.trim().isEmpty()) {
+                    continue;
+                }
+                String[] data = line.split(";");
+                if (data.length >= 1 && !data[0].trim().isEmpty()) {
+                    ids.add(data[0].trim());
+                }
+            }
+        }
+        return ids;
     }
 }
