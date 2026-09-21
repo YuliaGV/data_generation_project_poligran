@@ -1,0 +1,14 @@
+# Compilados de Java
+bin/
+*.class
+
+# Archivos generados al ejecutar el proyecto
+productos_info.txt
+vendedores_info.txt
+ventas_*.txt
+reporte_*.csv
+errores_validacion.log
+reportes.ser
+
+# Mac OS
+.DS_Store
