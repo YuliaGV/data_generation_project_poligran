@@ -5,6 +5,7 @@ import java.io.BufferedWriter;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.Locale;
 import java.util.Random;
 
 
@@ -77,7 +78,10 @@ public class GenerateInfoFiles {
                 double precioUnidad = 10000.0 + (490000.0 * random.nextDouble()); 
                 
                 // Formatea y escribir la línea
-                String linea = String.format("%s;%s;%.2f", idProducto, nombreProducto, precioUnidad);
+                // Locale.ROOT fuerza el punto como separador decimal. Sin esto, en un
+                // equipo configurado en español el precio saldría con coma y no se
+                // podría volver a leer como número.
+                String linea = String.format(Locale.ROOT, "%s;%s;%.2f", idProducto, nombreProducto, precioUnidad);
                 writer.write(linea);
                 writer.newLine();
             }
