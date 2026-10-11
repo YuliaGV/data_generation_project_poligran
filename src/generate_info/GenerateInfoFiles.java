@@ -5,6 +5,11 @@ import java.io.BufferedWriter;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.Locale;
 import java.util.Random;
 
 
@@ -15,6 +20,14 @@ public class GenerateInfoFiles {
     private static final String[] APELLIDOS = {"Gomez", "Mosquera", "Perez", "Smith", "Mbappe", "Paniagua", "Messi", "Ruiz", "Torres", "Delgado"};
     private static final String[] PRODUCTOS = {"Camiseta", "Pantalon", "Chaqueta", "Zapatos", "Gorra", "Bufanda", "Cojines", "Cobijas", "Cinturon", "Gafas"};
     private static final String DOCUMENT_TYPE = "CC";
+
+    // Nombres de los archivos que genera el programa
+    private static final String PRODUCTS_FILE = "productos_info.txt";
+    private static final String SALESMEN_FILE = "vendedores_info.txt";
+
+    // Cada tanto un vendedor recibe un segundo archivo de ventas, para que el
+    // caso de varios archivos por vendedor quede siempre cubierto en la prueba
+    private static final double PROBABILIDAD_SEGUNDO_ARCHIVO = 0.4;
     
     private static final Random random = new Random();
 
@@ -26,6 +39,10 @@ public class GenerateInfoFiles {
         System.out.println("Iniciando la generacion de archivos de prueba");
 
         try {
+            // Se borran los archivos de ventas de la corrida anterior. Si se quedan,
+            // se leen junto con los nuevos y los totales de los reportes no cuadran.
+            borrarVentasAnteriores();
+            
             // Generamos archivo de información de productos (por ejemplo 10 productos)
             createProductsFile(10);
             
@@ -35,7 +52,7 @@ public class GenerateInfoFiles {
             // Leemos el archivo generado de salesmen y creamos un archivo sales para cada uno
             
             try (BufferedReader reader =
-                    new BufferedReader(new FileReader("vendedores_info.txt"))) {
+                    new BufferedReader(new FileReader(SALESMEN_FILE))) {
 
                 String line;
 
@@ -48,6 +65,11 @@ public class GenerateInfoFiles {
                     long id = Long.parseLong(data[1]);
 
                     createSalesMenFile(10, name, id);
+
+                    // A algunos vendedores se les genera un segundo archivo
+                    if (random.nextDouble() < PROBABILIDAD_SEGUNDO_ARCHIVO) {
+                        createSalesMenFile(10, name, id, 2);
+                    }
                 }
             }
          
@@ -61,12 +83,40 @@ public class GenerateInfoFiles {
     }
 
     /**
+     * Borra los archivos de ventas que hayan quedado de una ejecución anterior.
+     * Solo se borra lo que empieza por "ventas_" y termina en ".txt", que es lo
+     * que genera este mismo programa.
+     */
+    private static void borrarVentasAnteriores() {
+        java.io.File carpeta = new java.io.File(".");
+        java.io.File[] archivos = carpeta.listFiles();
+        
+        if (archivos == null) {
+            return;
+        }
+        
+        int borrados = 0;
+        for (java.io.File archivo : archivos) {
+            String nombre = archivo.getName();
+            if (archivo.isFile() && nombre.startsWith("ventas_") && nombre.endsWith(".txt")) {
+                if (archivo.delete()) {
+                    borrados++;
+                }
+            }
+        }
+        
+        if (borrados > 0) {
+            System.out.println("Se borraron " + borrados + " archivos de ventas de la ejecucion anterior");
+        }
+    }
+
+    /**
      * Se recibe la cantidad de productos a generar en el archivo
      * Se crea un archivo con información pseudoaleatoria de productos.
      * Formato: Id Producto; Nombre Producto; Precio por Unidad.
      */
     public static void createProductsFile(int productsCount) throws IOException {
-        String fileName = "productos_info.txt";
+        String fileName = PRODUCTS_FILE;
         
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(fileName))) {
             for (int i = 1; i <= productsCount; i++) {
@@ -77,7 +127,10 @@ public class GenerateInfoFiles {
                 double precioUnidad = 10000.0 + (490000.0 * random.nextDouble()); 
                 
                 // Formatea y escribir la línea
-                String linea = String.format("%s;%s;%.2f", idProducto, nombreProducto, precioUnidad);
+                // Locale.ROOT fuerza el punto como separador decimal. Sin esto, en un
+                // equipo configurado en español el precio saldría con coma y no se
+                // podría volver a leer como número.
+                String linea = String.format(Locale.ROOT, "%s;%s;%.2f", idProducto, nombreProducto, precioUnidad);
                 writer.write(linea);
                 writer.newLine();
             }
@@ -90,15 +143,35 @@ public class GenerateInfoFiles {
      * Formato: Tipo Documento; Número Documento; Nombres; Apellidos
      */
     public static void createSalesManInfoFile(int salesmanCount) throws IOException {
-        String fileName = "vendedores_info.txt";
+        String fileName = SALESMEN_FILE;
+        
+        // Con dos listas de nombres y apellidos solo hay esta cantidad de combinaciones
+        // posibles. Si se piden más vendedores que eso, no alcanzan los nombres distintos.
+        int combinacionesPosibles = NOMBRES.length * APELLIDOS.length;
+        if (salesmanCount > combinacionesPosibles) {
+            throw new IOException("No se pueden generar " + salesmanCount
+                    + " vendedores con nombres distintos. El maximo es " + combinacionesPosibles
+                    + ". Agregue mas nombres o apellidos a las listas.");
+        }
+        
+        // Guarda los nombres que ya se usaron, para no repetir ninguno
+        Set<String> nombresUsados = new HashSet<String>();
         
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(fileName))) {
             for (int i = 0; i < salesmanCount; i++) {
                 // Genera datos pseudoaleatorios
                 String tipoDoc = DOCUMENT_TYPE;
                 long numDoc = 1000000000L + (long)(random.nextDouble() * 9000000000L); // Número de 10 dígitos
-                String nombre = NOMBRES[random.nextInt(NOMBRES.length)];
-                String apellido = APELLIDOS[random.nextInt(APELLIDOS.length)];
+                
+                // El reporte final muestra el nombre y no el documento, asi que dos
+                // vendedores con el mismo nombre saldrian como dos filas iguales y no
+                // habria forma de distinguirlas. Se sortea hasta que salga uno libre.
+                String nombre;
+                String apellido;
+                do {
+                    nombre = NOMBRES[random.nextInt(NOMBRES.length)];
+                    apellido = APELLIDOS[random.nextInt(APELLIDOS.length)];
+                } while (!nombresUsados.add(nombre + " " + apellido));
                 
                 // Formatea y escribir la línea
                 String linea = String.format("%s;%d;%s;%s", tipoDoc, numDoc, nombre, apellido);
@@ -115,9 +188,31 @@ public class GenerateInfoFiles {
      * Se reciben como parámetros: la cantiad de ventas a generar, el nombre del vendedor y el número de identificación del vendedor 
      */
     public static void createSalesMenFile(int randomSalesCount, String name, long id) throws IOException {
+        createSalesMenFile(randomSalesCount, name, id, 1);
+    }
+
+    /**
+     * Igual que el método anterior, pero permite crear un segundo o tercer archivo
+     * de ventas para el mismo vendedor. Los archivos quedan con nombres distintos y
+     * todos llevan el mismo documento en la primera línea, que es lo que permite
+     * sumarlos después en una sola cuenta.
+     * Se recibe además el consecutivo del archivo, empezando en 1.
+     */
+    public static void createSalesMenFile(int randomSalesCount, String name, long id, int numeroArchivo)
+            throws IOException {
         // Se crea un nombre de archivo
         String safeName = name.replace(" ", "_");
-        String fileName = "ventas_" + safeName + "_" + id + ".txt";
+        String sufijo = numeroArchivo > 1 ? "_" + numeroArchivo : "";
+        String fileName = "ventas_" + safeName + "_" + id + sufijo + ".txt";
+        
+        // Se leen los productos que existen de verdad en el catálogo, en vez de
+        // suponer que siempre son diez. Así no se generan ventas de productos
+        // inexistentes si se cambia la cantidad de productos.
+        List<String> idsProductos = leerIdsDeProductos();
+        if (idsProductos.isEmpty()) {
+            throw new IOException("El archivo " + PRODUCTS_FILE
+                    + " no tiene productos. Debe generarse antes que las ventas.");
+        }
         
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(fileName))) {
             // CC se asume como tipo de documento por defecto
@@ -129,9 +224,8 @@ public class GenerateInfoFiles {
             
             // Genera las ventas
             for (int i = 0; i < randomSalesCount; i++) {
-                // Genera ID de producto pseudoaleatorio (asumiendo formato PROD-XXX)
-                int idNum = random.nextInt(10) + 1; // Un producto del 1 al 10
-                String idProducto = "PROD-" + String.format("%03d", idNum);
+                // Toma un producto cualquiera de los que existen en el catálogo
+                String idProducto = idsProductos.get(random.nextInt(idsProductos.size()));
                 
                 // Cantidad vendida entre 1 y 50
                 int cantidadVendida = random.nextInt(50) + 1; 
@@ -142,5 +236,32 @@ public class GenerateInfoFiles {
                 writer.newLine();
             }
         }
+    }
+
+    /**
+     * Lee del archivo de productos los ids que se pueden vender.
+     * Se devuelve una lista vacía si el archivo todavía no existe.
+     */
+    private static List<String> leerIdsDeProductos() throws IOException {
+        List<String> ids = new ArrayList<String>();
+        
+        java.io.File archivo = new java.io.File(PRODUCTS_FILE);
+        if (!archivo.isFile()) {
+            return ids;
+        }
+        
+        try (BufferedReader reader = new BufferedReader(new FileReader(archivo))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (line.trim().isEmpty()) {
+                    continue;
+                }
+                String[] data = line.split(";");
+                if (data.length >= 1 && !data[0].trim().isEmpty()) {
+                    ids.add(data[0].trim());
+                }
+            }
+        }
+        return ids;
     }
 }
