@@ -6,6 +6,7 @@ Un programa se inventa los archivos de ventas de una empresa y otro los lee, sac
 cuentas y dice quién vendió más y qué producto se movió más. Todo con archivos planos.
 
 Elaborado por:
+Camilo Andrés Ramírez Beltrán,
 Santiago Gómez Peña,
 Elizabeth Ospina Castaño,
 Yuliana Gaviria Valencia,
